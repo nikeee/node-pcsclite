@@ -1,7 +1,9 @@
 #ifndef PCSCLITE_H
 #define PCSCLITE_H
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
+#include <string>
 #ifdef __APPLE__
 #include <PCSC/winscard.h>
 #include <PCSC/wintypes.h>
@@ -9,43 +11,32 @@
 #include <winscard.h>
 #endif
 
-class PCSCLite: public Nan::ObjectWrap {
-
-    struct AsyncResult {
-        LONG result;
-        LPSTR readers_name;
-        DWORD readers_name_length;
-        bool do_exit;
-        std::string err_msg;
-    };
-
-    struct AsyncBaton {
-        uv_async_t async;
-        Nan::Persistent<v8::Function> callback;
-        PCSCLite *pcsclite;
-        AsyncResult *async_result;
-    };
+class PCSCLite : public Napi::ObjectWrap<PCSCLite> {
 
     public:
 
-        static void init(v8::Local<v8::Object> target);
+        struct AsyncResult {
+            LONG result;
+            LPSTR readers_name;
+            DWORD readers_name_length;
+            bool do_exit;
+            std::string err_msg;
+        };
+
+        static Napi::Object Init(Napi::Env env, Napi::Object exports);
+
+        PCSCLite(const Napi::CallbackInfo& info);
+        ~PCSCLite();
 
     private:
 
-        PCSCLite();
+        Napi::Value Start(const Napi::CallbackInfo& info);
+        Napi::Value Close(const Napi::CallbackInfo& info);
 
-        ~PCSCLite();
-
-        static Nan::Persistent<v8::Function> constructor;
-        static NAN_METHOD(New);
-        static NAN_METHOD(Start);
-        static NAN_METHOD(Close);
-
-        static void HandleReaderStatusChange(uv_async_t *handle);
         static void HandlerFunction(void* arg);
-        static void CloseCallback(uv_handle_t *handle);
+        void HandleAsyncResult(Napi::Env env, Napi::Function jsCallback, AsyncResult* ar);
 
-        LONG get_card_readers(PCSCLite* pcsclite, AsyncResult* async_result);
+        LONG get_card_readers(AsyncResult* async_result);
 
     private:
 
@@ -56,7 +47,11 @@ class PCSCLite: public Nan::ObjectWrap {
         uv_cond_t m_cond;
         bool m_pnp;
         int m_state;
-        static Nan::AsyncResource *async_resource;
+        bool m_thread_running;
+
+        Napi::ThreadSafeFunction m_tsfn;
+        LONG m_pending_err_result;
+        std::string m_pending_err_msg;
 };
 
 #endif /* PCSCLITE_H */

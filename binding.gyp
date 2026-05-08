@@ -7,6 +7,13 @@
 				"src/pcsclite.cpp",
 				"src/cardreader.cpp"
 			],
+			"include_dirs": [
+				"<!@(node -p \"require('node-addon-api').include\")"
+			],
+			"defines": [
+				"NAPI_DISABLE_CPP_EXCEPTIONS",
+				"NAPI_VERSION=8"
+			],
 			"cflags": [
 				"-Wall",
 				"-Wextra",
@@ -16,13 +23,15 @@
 				"-fno-exceptions",
 				"-pedantic"
 			],
+			"cflags_cc": [
+				"-fno-exceptions"
+			],
 			"conditions": [
 				[
 					"OS=='linux'",
 					{
 						"include_dirs": [
-							"/usr/include/PCSC",
-							"<!(node -e \"require('nan')\")"
+							"/usr/include/PCSC"
 						],
 						"link_settings": {
 							"libraries": [
@@ -40,9 +49,6 @@
 						"libraries": [
 							"-framework",
 							"PCSC"
-						],
-						"include_dirs": [
-							"<!(node -e \"require('nan')\")"
 						]
 					}
 				],
@@ -51,9 +57,6 @@
 					{
 						"libraries": [
 							"-lWinSCard"
-						],
-						"include_dirs": [
-							"<!(node -e \"require('nan')\")"
 						]
 					}
 				]

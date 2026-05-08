@@ -1,8 +1,8 @@
 #ifndef CARDREADER_H
 #define CARDREADER_H
 
-#include <nan.h>
-#include <node_version.h>
+#include <napi.h>
+#include <uv.h>
 #include <string>
 #ifdef __APPLE__
 #include <PCSC/winscard.h>
@@ -20,107 +20,46 @@
 #define IOCTL_CCID_ESCAPE (0x42000000 + 1)
 #endif
 
-static Nan::Persistent<v8::String> name_symbol;
-static Nan::Persistent<v8::String> connected_symbol;
+class ConnectWorker;
+class DisconnectWorker;
+class TransmitWorker;
+class ControlWorker;
 
-class CardReader: public Nan::ObjectWrap {
-
-    // We use a struct to store information about the asynchronous "work request".
-    struct Baton {
-        uv_work_t request;
-        Nan::Persistent<v8::Function> callback;
-        CardReader *reader;
-        void *input;
-        void *result;
-    };
-
-    struct ConnectInput {
-        DWORD share_mode;
-        DWORD pref_protocol;
-    };
-
-    struct ConnectResult {
-        LONG result;
-        DWORD card_protocol;
-    };
-
-    struct TransmitInput {
-        DWORD card_protocol;
-        LPBYTE in_data;
-        DWORD in_len;
-        DWORD out_len;
-    };
-
-    struct TransmitResult {
-        LONG result;
-        LPBYTE data;
-        DWORD len;
-    };
-
-    struct ControlInput {
-        DWORD control_code;
-        LPCVOID in_data;
-        DWORD in_len;
-        LPVOID out_data;
-        DWORD out_len;
-    };
-
-    struct ControlResult {
-        LONG result;
-        DWORD len;
-    };
-
-    struct AsyncResult {
-        LONG result;
-        DWORD status;
-        BYTE atr[MAX_ATR_SIZE];
-        DWORD atrlen;
-        bool do_exit;
-    };
-
-    struct AsyncBaton {
-        uv_async_t async;
-        Nan::Persistent<v8::Function> callback;
-        CardReader *reader;
-        AsyncResult *async_result;
-    };
+class CardReader : public Napi::ObjectWrap<CardReader> {
 
     public:
 
-        static void init(v8::Local<v8::Object> target);
+        struct AsyncResult {
+            LONG result;
+            DWORD status;
+            BYTE atr[MAX_ATR_SIZE];
+            DWORD atrlen;
+            bool do_exit;
+        };
 
-        const SCARDHANDLE& GetHandler() const { return m_card_handle; };
+        static Napi::Object Init(Napi::Env env, Napi::Object exports);
+
+        CardReader(const Napi::CallbackInfo& info);
+        ~CardReader();
+
+        const SCARDHANDLE& GetHandler() const { return m_card_handle; }
 
     private:
 
-        CardReader(const std::string &reader_name);
+        friend class ConnectWorker;
+        friend class DisconnectWorker;
+        friend class TransmitWorker;
+        friend class ControlWorker;
 
-        ~CardReader();
+        Napi::Value GetStatus(const Napi::CallbackInfo& info);
+        Napi::Value Connect(const Napi::CallbackInfo& info);
+        Napi::Value Disconnect(const Napi::CallbackInfo& info);
+        Napi::Value Transmit(const Napi::CallbackInfo& info);
+        Napi::Value Control(const Napi::CallbackInfo& info);
+        Napi::Value Close(const Napi::CallbackInfo& info);
 
-        static Nan::Persistent<v8::Function> constructor;
-
-        static NAN_METHOD(New);
-        static NAN_METHOD(GetStatus);
-        static NAN_METHOD(Connect);
-        static NAN_METHOD(Disconnect);
-        static NAN_METHOD(Transmit);
-        static NAN_METHOD(Control);
-        static NAN_METHOD(Close);
-
-        static void HandleReaderStatusChange(uv_async_t *handle);
         static void HandlerFunction(void* arg);
-        static void DoConnect(uv_work_t* req);
-        static void DoDisconnect(uv_work_t* req);
-        static void DoTransmit(uv_work_t* req);
-        static void DoControl(uv_work_t* req);
-        static void CloseCallback(uv_handle_t *handle);
-
-        static void AfterConnect(uv_work_t* req, int status);
-        static void AfterDisconnect(uv_work_t* req, int status);
-        static void AfterTransmit(uv_work_t* req, int status);
-        static void AfterControl(uv_work_t* req, int status);
-
-        static v8::Local<v8::Value> CreateBufferInstance(char* data, unsigned long size);
+        void HandleAsyncResult(Napi::Env env, Napi::Function jsCallback, AsyncResult* ar);
 
     private:
 
@@ -132,7 +71,9 @@ class CardReader: public Nan::ObjectWrap {
         uv_mutex_t m_mutex;
         uv_cond_t m_cond;
         int m_state;
-        static Nan::AsyncResource *async_resource;
+        bool m_thread_running;
+
+        Napi::ThreadSafeFunction m_tsfn;
 };
 
 #endif /* CARDREADER_H */
