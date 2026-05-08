@@ -1,0 +1,22 @@
+[package]
+name = "node-pcsclite"
+version = "0.6.0"
+edition = "2021"
+license = "ISC"
+description = "PC/SC bindings for Node.js"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2.16", default-features = false, features = ["napi6"] }
+napi-derive = "2.16"
+pcsc = "2.9"
+
+[build-dependencies]
+napi-build = "2.1"
+
+[profile.release]
+lto = true
+strip = "symbols"

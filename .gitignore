@@ -35,5 +35,12 @@ Desktop.ini
 # node, npm
 node_modules/
 
-# built Node.js C++ addon
+# built Node.js native addon
 /build/
+/lib/index.js
+/lib/index.d.ts
+/lib/*.node
+
+# Rust
+/target/
+Cargo.lock

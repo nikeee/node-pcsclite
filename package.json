@@ -35,25 +35,41 @@
   },
   "files": [
     "lib/pcsclite.js",
-    "src/*.h",
-    "src/*.cpp",
+    "lib/index.js",
+    "lib/*.node",
+    "src/**/*.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "build.rs",
     "examples/*.js",
     "test/*.js",
-    "binding.gyp",
     "index.d.ts"
   ],
+  "napi": {
+    "name": "pcsclite",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "x86_64-pc-windows-msvc",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
   "scripts": {
-    "install": "node-gyp rebuild",
+    "install": "napi build --release --platform lib",
+    "build": "napi build --release --platform lib",
+    "build:debug": "napi build --platform lib",
+    "prepublishOnly": "napi prepublish -t npm",
+    "artifacts": "napi artifacts",
     "test": "mocha --exit"
   },
-  "dependencies": {
-    "node-addon-api": "^8.0.0"
-  },
   "devDependencies": {
+    "@napi-rs/cli": "^2.18.4",
     "mocha": "^10.2.0",
-    "node-gyp": "^12.3.0",
     "should": "^13.2.3",
     "sinon": "^16.0.0"
-  },
-  "gypfile": true
+  }
 }
