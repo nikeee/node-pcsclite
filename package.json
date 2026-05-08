@@ -44,13 +44,12 @@
   ],
   "scripts": {
     "install": "node-gyp rebuild",
-    "test": "mocha --exit"
+    "test": "node --test"
   },
   "dependencies": {
     "nan": "^2.18.0"
   },
   "devDependencies": {
-    "mocha": "^10.2.0",
     "should": "^13.2.3",
     "sinon": "^16.0.0"
   },
