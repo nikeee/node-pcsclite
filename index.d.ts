@@ -10,8 +10,6 @@ type Status = {
 	state: number;
 };
 
-type AnyOrNothing = any | undefined | null;
-
 interface PCSCLite extends EventEmitter {
 	on(type: "error", listener: (error: any) => void): this;
 
@@ -74,34 +72,21 @@ interface CardReader extends EventEmitter {
 
 	SCARD_CTL_CODE(code: number): number;
 
-	get_status(
-		cb: (err: AnyOrNothing, state: number, atr?: Buffer) => void
-	): void;
+	connect(options?: ConnectOptions): Promise<number>;
 
-	connect(callback: (err: AnyOrNothing, protocol: number) => void): void;
-
-	connect(
-		options: ConnectOptions,
-		callback: (err: AnyOrNothing, protocol: number) => void
-	): void;
-
-	disconnect(callback: (err: AnyOrNothing) => void): void;
-
-	disconnect(disposition: number, callback: (err: AnyOrNothing) => void): void;
+	disconnect(disposition?: number): Promise<void>;
 
 	transmit(
 		data: Buffer,
 		res_len: number,
-		protocol: number,
-		cb: (err: AnyOrNothing, response: Buffer) => void
-	): void;
+		protocol: number
+	): Promise<Buffer>;
 
 	control(
 		data: Buffer,
 		control_code: number,
-		res_len: number,
-		cb: (err: AnyOrNothing, response: Buffer) => void
-	): void;
+		res_len: number
+	): Promise<Buffer>;
 
 	close(): void;
 }

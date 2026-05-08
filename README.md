@@ -31,10 +31,10 @@ Bindings over pcsclite to access Smart Cards. It works in **Linux**, **macOS** a
     - [Event: `error`](#event-error-1)
     - [Event: `end`](#event-end)
     - [Event: `status`](#event-status)
-    - [reader.connect([options], callback)](#readerconnectoptions-callback)
-    - [reader.disconnect(disposition, callback)](#readerdisconnectdisposition-callback)
-    - [reader.transmit(input, res_len, protocol, callback)](#readertransmitinput-res_len-protocol-callback)
-    - [reader.control(input, control_code, res_len, callback)](#readercontrolinput-control_code-res_len-callback)
+    - [reader.connect([options])](#readerconnectoptions)
+    - [reader.disconnect([disposition])](#readerdisconnectdisposition)
+    - [reader.transmit(input, res_len, protocol)](#readertransmitinput-res_len-protocol)
+    - [reader.control(input, control_code, res_len)](#readercontrolinput-control_code-res_len)
     - [reader.close()](#readerclose)
 - [FAQ](#faq)
   - [Can I use this library in my Electron app?](#can-i-use-this-library-in-my-electron-app)
@@ -110,7 +110,7 @@ pcsc.on('reader', (reader) => {
         console.log('Error(', reader.name, '):', err.message);
     });
 
-    reader.on('status', (status) => {
+    reader.on('status', async (status) => {
 
         console.log('Status(', reader.name, '):', status);
 
@@ -125,45 +125,29 @@ pcsc.on('reader', (reader) => {
 
             console.log("card removed");
 
-            reader.disconnect(reader.SCARD_LEAVE_CARD, err => {
-
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-
+            try {
+                await reader.disconnect(reader.SCARD_LEAVE_CARD);
                 console.log('Disconnected');
-
-            });
+            } catch (err) {
+                console.log(err);
+            }
 
         }
         else if ((changes & reader.SCARD_STATE_PRESENT) && (status.state & reader.SCARD_STATE_PRESENT)) {
 
             console.log("card inserted");
 
-            reader.connect({ share_mode: reader.SCARD_SHARE_SHARED }, (err, protocol) => {
-
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-
+            try {
+                const protocol = await reader.connect({ share_mode: reader.SCARD_SHARE_SHARED });
                 console.log('Protocol(', reader.name, '):', protocol);
 
-                reader.transmit(Buffer.from([0x00, 0xB0, 0x00, 0x00, 0x20]), 40, protocol, (err, data) => {
-
-                    if (err) {
-                        console.log(err);
-                        return;
-                    }
-
-                    console.log('Data received', data);
-                    reader.close();
-                    pcsc.close();
-
-                });
-
-            });
+                const data = await reader.transmit(Buffer.from([0x00, 0xB0, 0x00, 0x00, 0x20]), 40, protocol);
+                console.log('Data received', data);
+                reader.close();
+                pcsc.close();
+            } catch (err) {
+                console.log(err);
+            }
 
         }
 
@@ -231,47 +215,40 @@ Emitted when the card reader has been removed.
 
 Emitted whenever the status of the reader changes.
 
-#### reader.connect([options], callback)
+#### reader.connect([options])
 
 * *options* `Object` Optional
     * *share_mode* `Number` Shared mode. Defaults to `SCARD_SHARE_EXCLUSIVE`
     * *protocol* `Number` Preferred protocol. Defaults to `SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1`
-* *callback* `Function` called when connection operation ends
-    * *error* `Error`
-    * *protocol* `Number` Established protocol to this connection.
+* Returns: `Promise<Number>` resolves with the established *protocol*, rejects with an `Error`.
 
 Wrapper around [`SCardConnect`](https://pcsclite.apdu.fr/api/group__API.html#ga4e515829752e0a8dbc4d630696a8d6a5).
 Establishes a connection to the reader.
 
-#### reader.disconnect(disposition, callback)
+#### reader.disconnect([disposition])
 
 * *disposition* `Number`. Reader function to execute. Defaults to `SCARD_UNPOWER_CARD`
-* *callback* `Function` called when disconnection operation ends
-    * *error* `Error`
+* Returns: `Promise<void>` resolves when disconnected, rejects with an `Error`.
 
 Wrapper around [`SCardDisconnect`](https://pcsclite.apdu.fr/api/group__API.html#ga4be198045c73ec0deb79e66c0ca1738a).
 Terminates a connection to the reader.
 
-#### reader.transmit(input, res_len, protocol, callback)
+#### reader.transmit(input, res_len, protocol)
 
 * *input* `Buffer` input data to be transmitted
 * *res_len* `Number`. Max. expected length of the response
 * *protocol* `Number`. Protocol to be used in the transmission
-* *callback* `Function` called when transmit operation ends
-    * *error* `Error`
-    * *output* `Buffer`
+* Returns: `Promise<Buffer>` resolves with the response *output*, rejects with an `Error`.
 
 Wrapper around [`SCardTransmit`](https://pcsclite.apdu.fr/api/group__API.html#ga9a2d77242a271310269065e64633ab99).
 Sends an APDU to the smart card contained in the reader connected to.
 
-#### reader.control(input, control_code, res_len, callback)
+#### reader.control(input, control_code, res_len)
 
 * *input* `Buffer` input data to be transmitted
 * *control_code* `Number`. Control code for the operation
 * *res_len* `Number`. Max. expected length of the response
-* *callback* `Function` called when control operation ends
-    * *error* `Error`
-    * *output* `Buffer`
+* Returns: `Promise<Buffer>` resolves with the response *output*, rejects with an `Error`.
 
 Wrapper around [`SCardControl`](https://pcsclite.apdu.fr/api/group__API.html#gac3454d4657110fd7f753b2d3d8f4e32f).
 Sends a command directly to the IFD Handler (reader driver) to be processed by the reader.
